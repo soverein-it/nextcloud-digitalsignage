@@ -1,0 +1,61 @@
+name: Soverein fork release
+
+# Fork-only. Runs on four-segment tags (v0.9.4.1); upstream's tags have three,
+# so they never trigger this. The tag must be the info.xml version plus one
+# extra segment, which keeps the fork ahead of the store build of the same
+# base version and behind upstream's next release.
+
+on:
+  push:
+    tags:
+      - 'v[0-9]+.[0-9]+.[0-9]+.[0-9]+'
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-release:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+
+      - name: Check tag against info.xml
+        id: version
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          BASE=$(sed -n 's:.*<version>\(.*\)</version>.*:\1:p' appinfo/info.xml)
+          if [[ "${VERSION%.*}" != "$BASE" ]]; then
+            echo "::error::Tag $GITHUB_REF_NAME does not extend info.xml version $BASE (expected v$BASE.N)"
+            exit 1
+          fi
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
+      # Same archive layout as release-and-upload.yml, with the fork version
+      # stamped into info.xml so the branch itself carries no version commit.
+      - name: Create release archive
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          mkdir -p /tmp/release
+          cp -r . /tmp/release/digitalsignage
+          cd /tmp/release/digitalsignage
+          rm -rf .git .github .gitignore scripts
+          find . -name "*.key" -delete
+          sed -i "s:<version>.*</version>:<version>$VERSION</version>:" appinfo/info.xml
+          grep -q "<version>$VERSION</version>" appinfo/info.xml
+          cd /tmp/release
+          tar -czf "$GITHUB_WORKSPACE/digitalsignage-$VERSION.tar.gz" digitalsignage/
+          cd "$GITHUB_WORKSPACE"
+          sha256sum "digitalsignage-$VERSION.tar.gz" > "digitalsignage-$VERSION.tar.gz.sha256"
+
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" \
+            "digitalsignage-$VERSION.tar.gz" \
+            "digitalsignage-$VERSION.tar.gz.sha256" \
+            --title "$GITHUB_REF_NAME" \
+            --generate-notes
