@@ -10,6 +10,7 @@ use OCA\DigitalSignage\Db\TokenMapper;
 use OCA\DigitalSignage\Service\PresetService;
 use OCA\DigitalSignage\Util\Slug;
 use OCP\IURLGenerator;
+use OCP\AppFramework\Http\Attribute\NoAdminRequired;
 
 class TokenController extends Controller {
     private $tokenMapper;
@@ -72,6 +73,7 @@ class TokenController extends Controller {
     /**
      * @NoAdminRequired
      */
+    #[NoAdminRequired]
     public function create(
         string $name,
         string $time_zone = '',
@@ -130,6 +132,7 @@ class TokenController extends Controller {
     /**
      * @NoAdminRequired
      */
+    #[NoAdminRequired]
     public function update(
         int $id,
         ?string $name = null,
@@ -200,6 +203,7 @@ class TokenController extends Controller {
     /**
      * @NoAdminRequired
      */
+    #[NoAdminRequired]
     public function clone(int $id): JSONResponse {
         try {
             $source = $this->tokenMapper->find($id);
@@ -230,6 +234,7 @@ class TokenController extends Controller {
     /**
      * @NoAdminRequired
      */
+    #[NoAdminRequired]
     public function list(): JSONResponse {
         try {
             $this->presetService->ensureDefaultPreset((string)$this->userId);
@@ -273,6 +278,7 @@ class TokenController extends Controller {
     /**
      * @NoAdminRequired
      */
+    #[NoAdminRequired]
     public function activatePreset(int $id, int $presetId): JSONResponse {
         try {
             $display = $this->tokenMapper->find($id);
@@ -305,6 +311,7 @@ class TokenController extends Controller {
     /**
      * @NoAdminRequired
      */
+    #[NoAdminRequired]
     public function delete(int $id): JSONResponse {
         try {
             $token = $this->tokenMapper->find($id);
